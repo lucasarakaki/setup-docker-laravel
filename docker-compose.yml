@@ -1,35 +1,27 @@
-version: "3.7"
-
 services:
     # image project
     app:
         build:
             context: .
             dockerfile: Dockerfile
+        container_name: dev_workspace
         restart: unless-stopped
         working_dir: /var/www/
         volumes:
-            - ./:/var/www
+            - ./workspace:/var/www
+        ports:
+            - 8090:8000
+        tty: true
+        stdin_open: true
         depends_on:
             - redis
         networks:
-            - laravel
-
-    # nginx
-    nginx:
-        image: nginx:alpine
-        restart: unless-stopped
-        ports:
-            - "8989:80"
-        volumes:
-            - ./:/var/www
-            - ./docker/nginx/:/etc/nginx/conf.d/
-        networks:
-            - laravel
+            - dev_network
 
     # db mysql
     db:
-        image: mysql:5.7.22
+        image: mysql:5.7
+        container_name: dev_db
         restart: unless-stopped
         environment:
             MYSQL_DATABASE: ${DB_DATABASE:-laravel}
@@ -37,31 +29,31 @@ services:
             MYSQL_PASSWORD: ${DB_PASSWORD:-userpass}
             MYSQL_USER: ${DB_USERNAME:-username}
         volumes:
-            - ./.docker/mysql/dbdata:/var/lib/mysql
+            - dbdata:/var/lib/mysql
         ports:
-            - "3388:3306"
+            - "3306:3306"
         networks:
-            - laravel
+            - dev_network
 
     # PHPMyAdmin
     phpmyadmin:
         image: phpmyadmin/phpmyadmin
+        container_name: dev_phpmyadmin
         restart: unless-stopped
         ports:
-            - "8080:80"
+            - "8070:80"
         environment:
             PMA_HOST: db
             PMA_PORT: 3306
             MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-userpass}
+        depends_on:
+            - db
         networks:
-            - laravel
+            - dev_network
 
-    # redis
-    redis:
-        image: redis:latest
-        networks:
-            - laravel
+volumes:
+    dbdata:
 
 networks:
-    laravel:
+    dev_network:
         driver: bridge
